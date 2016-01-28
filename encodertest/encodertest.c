@@ -21,23 +21,6 @@
 _PIN *ENC_SCK, *ENC_MISO, *ENC_MOSI;
 _PIN *ENC_NCS;
 
-
-WORD enc_writeReg(WORD address, WORD value) {
-    WORD cmd, payload, result;
-    cmd.w = 0x0000|address.w;
-    cmd.w |= parity(cmd.w)<<15;
-
-    pin_clear(ENC_NCS);
-    spi_transfer(&spi1, cmd.b[1]);
-    spi_transfer(&spi1, cmd.b[0]);
-    spi_transfer(&spi1, payload.b[1]);
-    spi_transfer(&spi1, payload.b[0]);
-    result.b[1] = spi_transfer(&spi1, 0);
-    result.b[0] = spi_transfer(&spi1, 0);
-    pin_set(ENC_NCS);
-    return result;
-}
-
 WORD enc_readReg(WORD address) {
     WORD cmd, result;
     cmd.w = 0x4000|address.w; //set 2nd MSB to 1 for a read
