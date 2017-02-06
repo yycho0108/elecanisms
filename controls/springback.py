@@ -3,14 +3,27 @@ import numpy as np
 import usb.core
 import time
 import signal, sys
+import time
 
 from array import array
+from pid import PID
+
+# torque constant = 15.8 mNm/A
 
 def parse_angle(angleBytes):
     angle_enc = int(angleBytes[0])+int(angleBytes[1])*256
     #print "Bin: {0:016b} Hex:{1:04x} Dec:{2:0f} Angle:{3:0f}".format(angle_enc, angle_enc, float(angle_enc)/0x3FFF, float(angle_enc)/0x3FFF*360)
     angle_enc = (float(angle_enc) / 0x3FFF * 360) % 360
     return angle_enc
+
+def parse_current(currentBytes):
+    resistance = 75e-3
+    vmax = 1.65
+    gain = 10
+    voltage = ((currentBytes[1])*256 + currentBytes[0]) #
+    voltage = float(voltage)/0xFFFF - 0.5
+    voltage = voltage * 1.65/.5 * vmax/ gain
+    return voltage / resistance
 
 class encodertest:
 
@@ -67,7 +80,7 @@ class encodertest:
                 speed *= 0.6
                 speed += -0.4 if speed < 0 else 0.4
 
-            print speed
+            #print speed
             speed = np.uint16(0x3FFF + speed * 0x3FFF)
             #print speed
             ret = self.dev.ctrl_transfer(0xC0, self.SET_SPEED, 0, speed, 0)
@@ -78,9 +91,15 @@ class encodertest:
     def enc_readReg(self, address):
         try:
             ret = self.dev.ctrl_transfer(0xC0, self.ENC_READ_REG, address, 0, 2)
-            self.dev.ctrl_transfer
         except usb.core.USBError:
             print "Could not send ENC_READ_REG vendor request."
+        else:
+            return ret
+    def read_current(self):
+        try:
+            ret = self.dev.ctrl_transfer(0xC0, self.READ_CURRENT, 0, 0, 2)
+        except usb.core.USBError:
+            print "Could not send READ_CURRENT vendor request."
         else:
             return ret
 
@@ -97,19 +116,39 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, sigint_handler)
 
     t = encodertest()
+    pid = PID(10.0,0.0,0.0)
+    
     bias = 97.54
 
+    k = -2./180
 
-    k = 1./180
-
+    Is = []
+    then = time.time()
     while True:
         ang = (parse_angle(t.enc_readAng()) - bias)
+        I = parse_current(t.read_current())
+        Is.append(I)
+
         if ang > 180:
             ang -= 360
         elif ang < -180:
             ang += 360
-        speed = -k*(ang)
+
+        desired_current = k * ang 
+        print 'dc', desired_current
+        measured_current = np.mean(Is[-100:])
+        print 'mc', measured_current 
+        error = desired_current - measured_current
+
+        now = time.time()
+        dt = now - then
+        then = now
+
+        speed = pid.compute(error,dt)
+        speed = max(min(speed,1),-1)
+
         t.set_speed(speed, zero=(abs(ang)<2))
+
 
     t.close()
 

@@ -42,6 +42,16 @@ void set_speed(){
 	BD[EP0IN].status = 0xC8;  
 }
 
+void read_current(){
+	WORD result;
+	result.w  = pin_read(&A[0]);
+
+	BD[EP0IN].address[0] = result.b[0];
+	BD[EP0IN].address[1] = result.b[1];
+	BD[EP0IN].bytecount = 2;         // set EP0 IN byte count to 1
+	BD[EP0IN].status = 0xC8;
+}
+
 //void read_sw(){
 //	_SW* sws[3] = {&sw1, &sw2, &sw3};
 //	uint16_t i = 
@@ -57,6 +67,7 @@ void set_speed(){
 void registerUSBEvents(){
 	registerUSBEvent(read_enc, ENC_READ_ANG);
 	registerUSBEvent(set_speed, SET_SPEED);
+	registerUSBEvent(read_current, READ_CURRENT);
 }
 
 int16_t main(void) {
