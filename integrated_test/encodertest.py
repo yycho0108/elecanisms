@@ -14,15 +14,17 @@ def parse_angle(angleBytes):
 class encodertest:
 
     def __init__(self):
-        self.TOGGLE_LED1 = 1
-        self.TOGGLE_LED2 = 2
-        self.READ_SW1 = 3
-        self.ENC_READ_REG = 5
-        self.ENC_CLEAR_ERR = 6
-        self.TOGGLE_LED3 = 8
-        self.READ_SW2 = 9
-        self.READ_SW3 = 10
-        self.ENC_SET_ZERO=11
+        #self.TOGGLE_LED1 = 1
+        #self.TOGGLE_LED2 = 2
+        #self.READ_SW1 = 3
+        #self.ENC_READ_REG = 5
+        #self.ENC_CLEAR_ERR = 6
+        #self.TOGGLE_LED3 = 8
+        #self.READ_SW2 = 9
+        #self.READ_SW3 = 10
+        #self.ENC_SET_ZERO=11
+        self.ENC_READ_ANG = 1
+        self.TOGGLE_LED = 2
         self.dev = usb.core.find(idVendor = 0x6666, idProduct = 0x0003)
         if self.dev is None:
             raise ValueError('no USB device found matching idVendor = 0x6666 and idProduct = 0x0003')
@@ -41,48 +43,18 @@ class encodertest:
     def close(self):
         self.dev = None
 
-    def toggle_led1(self):
+    def toggle_led(self):
         try:
             self.dev.ctrl_transfer(0x40, self.TOGGLE_LED1)
         except usb.core.USBError:
             print "Could not send TOGGLE_LED1 vendor request."
-
-    def toggle_led2(self):
-        try:
-            self.dev.ctrl_transfer(0x40, self.TOGGLE_LED2)
-        except usb.core.USBError:
-            print "Could not send TOGGLE_LED2 vendor request."
-
-    def toggle_led3(self):
-        try:
-            self.dev.ctrl_transfer(0x40, self.TOGGLE_LED3)
-        except usb.core.USBError:
-            print "Could not send TOGGLE_LED3 vendor request."
-
-    def read_sw1(self):
+    def read_sw(self):
         try:
             ret = self.dev.ctrl_transfer(0xC0, self.READ_SW1, 0, 0, 1)
         except usb.core.USBError:
             print "Could not send READ_SW1 vendor request."
         else:
             return int(ret[0])
-
-    def read_sw2(self):
-        try:
-            ret = self.dev.ctrl_transfer(0xC0, self.READ_SW2, 0, 0, 1)
-        except usb.core.USBError:
-            print "Could not send READ_SW2 vendor request."
-        else:
-            return int(ret[0])
-
-    def read_sw3(self):
-        try:
-            ret = self.dev.ctrl_transfer(0xC0, self.READ_SW3, 0, 0, 1)
-        except usb.core.USBError:
-            print "Could not send READ_SW3 vendor request."
-        else:
-            return int(ret[0])
-
     def enc_setZero(self):
         try:
             ret = self.dev.ctrl_transfer(0xC0, self.ENC_SET_ZERO, 0, 0, 2)
@@ -90,7 +62,13 @@ class encodertest:
             print "Could not send ENC_SET_ZERO vendor request."
         else:
             return ret
-
+    def enc_readAng(self):
+        try:
+            ret = self.dev.ctrl_transfer(0xC0, self.ENC_READ_ANG, 0, 0, 2)
+        except usb.core.USBError:
+            print "Could not send ENC_READ_ANG vendor request."
+        else:
+            return ret
     def enc_readReg(self, address):
         try:
             ret = self.dev.ctrl_transfer(0xC0, self.ENC_READ_REG, address, 0, 2)
@@ -125,7 +103,7 @@ if __name__ == "__main__":
     idx = 0
     full = False
     while True:
-        ang = -(parse_angle(t.enc_readReg(t.ENC_ANGLE_AFTER_ZERO_POS_ADDER)) - bias)
+        ang = -(parse_angle(t.enc_readAng()) - bias)
         
         angles.append(ang)
         times.append(time.time())
