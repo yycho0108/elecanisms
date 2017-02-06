@@ -35,31 +35,30 @@ void registerUSBEvents(){
 }
 
 int16_t main(void) {
-    init_clock();
-    init_ui();
-    init_pin();
-    init_spi();
+	init_clock();
+	init_ui();
+	init_pin();
+	init_spi();
 
-    init_timer();
-    init_oc();
-    init_motors();
+	init_timer();
+	init_oc();
+
+	init_motors();
 	init_enc();
 
 	registerUSBEvents();
 
-    InitUSB();                              // initialize the USB registers and serial interface engine
-    while (USB_USWSTAT!=CONFIG_STATE) {     // while the peripheral is not configured...
-        ServiceUSB();                      // ...service USB requests
-        
-
-        //if (sw_read(&sw1)==1)
-        //    drive(&m1, 1);
-        //else if (sw_read(&sw1)==0)
-        //    drive(&m1, 0);
-    }
-    while (1) {
-        ServiceUSB();                       // service any pending USB requests
-        drive(&m1, !sw_read(&sw1));
-        led_write(&led3, !sw_read(&sw1));
-    }
+	InitUSB();                              // initialize the USB registers and serial interface engine
+	while (USB_USWSTAT!=CONFIG_STATE) {     // while the peripheral is not configured...
+		ServiceUSB();                      // ...service USB requests
+		//if (sw_read(&sw1)==1)
+		//    drive(&m1, 1);
+		//else if (sw_read(&sw1)==0)
+		//    drive(&m1, 0);
+	}
+	while (1) {
+		ServiceUSB();                       // service any pending USB requests
+		drive(&m1, !sw_read(&sw1));
+		led_write(&led3, !sw_read(&sw1));
+	}
 }
