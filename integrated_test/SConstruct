@@ -20,17 +20,19 @@ list = Builder(action = 'xc16-objdump -S -D $SOURCE > $TARGET',
 		src_suffix = 'elf')
 env.Append(BUILDERS = {'List' : list})
 
-env.Program('motor', [
-		'spin_down.c',
-		'motor.c',
+env.Program('modular_test', [
+		'modular_test.c',
 		'descriptors.c',
 		'../lib/common.c',
-		'usb.c',
 		'../lib/timer.c',
 		'../lib/ui.c',
 		'../lib/pin.c',
 		'../lib/oc.c',
-		'../lib/spi.c'
+		'../lib/spi.c',
+		'../lib/motor.c',
+		'../lib/encoder.c',
+		'../lib/usb.c',
+		'../lib/usb2.c'
 ])
 
 print('Creating builder to load hex file via bootloader...')
@@ -50,6 +52,6 @@ print('Creating builder to load hex file via bootloader...')
 #env.Append(BUILDERS = {'Load' : load})
 
 
-env.Hex('motor')
-env.List('motor')
-#env.Load('motor')
+env.Hex('modular_test')
+env.List('modular_test')
+#env.Load('modular_test')
