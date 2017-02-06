@@ -44,9 +44,8 @@ int16_t main(void) {
 	init_clock();
 	init_ui();
 	init_pin();
-	init_spi();
-
 	init_timer();
+	init_spi();
 	init_oc();
 
 	init_motors();
