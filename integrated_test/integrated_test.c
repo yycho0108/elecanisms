@@ -37,14 +37,14 @@ WORD enc_readReg(WORD address) {
     result.b[1] = spi_transfer(&spi1, 0);
     result.b[0] = spi_transfer(&spi1, 0);
     pin_set(ENC_NCS);
-	return result;
-	//return (WORD)(result.w & MASK);
+    return result;
+    //return (WORD)(result.w & MASK);
 }
 
 WORD enc_clearErr(){
-	WORD addr;
-	addr.w = 0x0001;
-	return enc_readReg(addr);
+    WORD addr;
+    addr.w = 0x0001;
+    return enc_readReg(addr);
 }
 
 //void ClassRequests(void) {
@@ -81,13 +81,13 @@ void VendorRequests(void) {
             BD[EP0IN].bytecount = 2;         // set EP0 IN byte count to 1
             BD[EP0IN].status = 0xC8;         // send packet as DATA1, set UOWN bit
             break;
-		case ENC_CLEAR_ERR:
-			result = enc_clearErr();
+        case ENC_CLEAR_ERR:
+            result = enc_clearErr();
             BD[EP0IN].address[0] = result.b[0];
             BD[EP0IN].address[1] = result.b[1];
             BD[EP0IN].bytecount = 2;         // set EP0 IN byte count to 1
             BD[EP0IN].status = 0xC8;         // send packet as DATA1, set UOWN bit
-			break;
+            break;
         case TOGGLE_LED3:
             led_toggle(&led3);
             BD[EP0IN].bytecount = 0;         // set EP0 IN byte count to 0
@@ -131,7 +131,7 @@ int16_t main(void) {
     init_clock();
     init_ui();
     init_pin();
-	init_timer();
+    init_timer();
     init_spi();
 
     ENC_MISO = &D[1];
