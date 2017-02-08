@@ -52,6 +52,11 @@ void read_current(){
 	BD[EP0IN].status = 0xC8;
 }
 
+//void set_current(){
+//	float current = ((float)(USB_setup.wIndex.w)-0x3FFF) * (3./0x3FFF);
+//
+//}
+
 //void read_sw(){
 //	_SW* sws[3] = {&sw1, &sw2, &sw3};
 //	uint16_t i = 

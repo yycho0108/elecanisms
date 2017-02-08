@@ -7,6 +7,8 @@ import time
 
 from array import array
 from pid import PID
+from matplotlib import pyplot as plt
+
 
 # torque constant = 15.8 mNm/A
 
@@ -74,15 +76,14 @@ class encodertest:
     def set_speed(self, speed,zero=False):
         # duty from 0.0 ~ 1.0
         try:
-            if zero:
-                speed = 0
-            else:
-                speed *= 0.6
-                speed += -0.4 if speed < 0 else 0.4
+            #if zero:
+            #    speed = 0
+            #else:
+            #    speed *= 0.6
+            #    speed += -0.4 if speed < 0 else 0.4
+            print speed
 
-            #print speed
             speed = np.uint16(0x3FFF + speed * 0x3FFF)
-            #print speed
             ret = self.dev.ctrl_transfer(0xC0, self.SET_SPEED, 0, speed, 0)
         except usb.core.USBError:
             print "Could not send SET_SPEED vendor request."
@@ -116,36 +117,62 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, sigint_handler)
 
     t = encodertest()
-    pid = PID(10.0,0.0,0.0)
+    pid = PID(6.0,0.05,0.0)
     
-    bias = 97.54
+    bias = 296.8
 
     k = -2./180
+    k2 = -0.05
+    ang_thresh = 15
 
     Is = []
     then = time.time()
+
+    plt.ion()
+    #graph = plt.plot([],[])[0]
+    #plt.show()
+
+    ts = []
+    dcs = []
+    mcs = []
+
     while True:
         ang = (parse_angle(t.enc_readAng()) - bias)
-        I = parse_current(t.read_current())
-        Is.append(I)
-
         if ang > 180:
             ang -= 360
         elif ang < -180:
             ang += 360
 
-        desired_current = k * ang 
-        print 'dc', desired_current
+        print ang
+        I = parse_current(t.read_current())
+        Is.append(I)
+
+        
+        if abs(ang) < ang_thresh:
+            desired_current = k2 * ang
+        else:
+            desired_current = k * ang + ang_thresh*(k-k2)*(1 if ang < 0 else -1)
+
         measured_current = np.mean(Is[-100:])
-        print 'mc', measured_current 
+        print 'dc : {0:.2f}; mc : {1:.2f}'.format( desired_current, measured_current)
+
         error = desired_current - measured_current
 
         now = time.time()
         dt = now - then
         then = now
 
+        ts.append(now)
+        mcs.append(measured_current)
+
+        #graph.set_xdata(ts)
+        #graph.set_ydata(mcs)
+        #plt.draw()
+        #plt.pause(0.010)
+
         speed = pid.compute(error,dt)
         speed = max(min(speed,1),-1)
+        #print 'speed : {0:.2f}'.format(speed)
 
         t.set_speed(speed, zero=(abs(ang)<2))
 
