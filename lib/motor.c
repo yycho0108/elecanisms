@@ -39,7 +39,9 @@ void drive(Motor* m, float speed){
 
 	m->speed = speed;
 	uint16_t duty = f2d(m->speed);
+
 	pin_write(m->pins[d],duty);
+	pin_write(m->pins[!d],0); // other pin gets a 0
 }
 
 void brake(Motor* m){

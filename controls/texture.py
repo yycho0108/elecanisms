@@ -9,9 +9,11 @@ from array import array
 from pid import PID
 from matplotlib import pyplot as plt
 
-from smoother import Smoother
 
 # torque constant = 15.8 mNm/A
+
+def sign(x):
+    return -1 if x<0 else 1
 
 def parse_angle(angleBytes):
     angle_enc = int(angleBytes[0])+int(angleBytes[1])*256
@@ -74,18 +76,16 @@ class encodertest:
             print "Could not send ENC_READ_ANG vendor request."
         else:
             return ret
-    def set_speed(self, speed,zero=False):
+    def set_duty(self, duty,zero=False):
         # duty from 0.0 ~ 1.0
         try:
-            if zero:
-                speed = 0
+            #if zero:
+            #    duty = 0
             #else:
-            #    speed *= 0.6
-            #    speed += -0.4 if speed < 0 else 0.4
-            print speed
-
-            speed = np.uint16(0x3FFF + speed * 0x3FFF)
-            ret = self.dev.ctrl_transfer(0xC0, self.SET_SPEED, 0, speed, 0)
+            #    duty *= 0.6
+            #    duty += -0.4 if duty < 0 else 0.4
+            duty = np.uint16(0x3FFF + duty * 0x3FFF)
+            ret = self.dev.ctrl_transfer(0xC0, self.SET_SPEED, 0, duty, 0)
         except usb.core.USBError:
             print "Could not send SET_SPEED vendor request."
         else:
@@ -118,35 +118,14 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, sigint_handler)
 
     t = encodertest()
-    pid = PID(6.0,0.05,0.00)
-    smoother = Smoother(50) # avg of 100 data
     
     bias = -3
-
-    k = 2./180
-    k2 = 0.05
-    ang_thresh = 10
+    k = 1./360
 
     Is = []
     then = time.time()
 
-    ts = []
-    dcs = []
-    mcs = []
-    ss = [] # speed
-
-    plt.ion()
-
-    #fig, axs = plt.subplots(2,1)
-
-    #g1 = axs[0].plot(ts,dcs)[0] # desired current
-    #g2 = axs[0].plot(ts,mcs)[0] # measured current plot
-    #g3 = axs[1].plot(ts, ss, 'r')[0] # speed
-
-    #axs[0].autoscale(enable=True,axis='both',tight=False)
-    #axs[0].legend(['desired current','measured current'])
-    #axs[1].autoscale(enable=True,axis='both',tight=False)
-    #axs[1].legend(['speed'])
+    old_angle = 0
 
     while True:
         ang = (parse_angle(t.enc_readAng()) - bias)
@@ -155,51 +134,25 @@ if __name__ == "__main__":
         elif ang < -180:
             ang += 360
 
-        print 'ang', ang
-        I = parse_current(t.read_current())
-        Is.append(I)
+        ang = round(ang*100)/100.
+        print ang
 
-        if abs(ang) < ang_thresh:
-            desired_current = k2 * ang
-        else:
-            desired_current = k * ang + ang_thresh*(k-k2)*(1 if ang < 0 else -1)
-
-        smoother.put(I)
-        measured_current = smoother.get()
-
-        # compute error
-        print 'dc : {0:.2f}; mc : {1:.2f}'.format( desired_current, measured_current)
-        error = (desired_current - measured_current) #need to counteract
-
-        ## GET DT
         now = time.time()
         dt = now - then
         then = now
 
-        # get speed
-        speed = pid.compute(error,dt)
-        speed = max(min(speed,0.9),-0.9)# capping speed
-        ss.append(speed)
+        velocity = (ang-old_angle) / dt #deg/s
 
-
-        ts.append(now)
-        dcs.append(desired_current)
-        mcs.append(measured_current)
-
-        #g1.set_data(ts,dcs)
-        #g2.set_data(ts,mcs)
-        #g3.set_data(ts,ss)
-
-        #for ax in axs:
-        #    ax.relim()
-        #    ax.autoscale_view(True,True,True)
-
-        #fig.canvas.draw()
-
-        print 'speed : {0:.2f}'.format(speed)
-
-        t.set_speed(speed, zero=(abs(ang)<1))
-
+        duty = k * velocity
+        duty = max(min(duty,0.9),-0.9)
+        print 'duty', duty
+        print 'da' ,ang - old_angle
+        if abs(ang - old_angle) < .15:
+            t.set_duty(0)
+        elif (round(ang) % 10) > 5:
+            t.set_duty(0)
+        else:
+            t.set_duty(duty)
+        old_angle = ang
 
     t.close()
-
