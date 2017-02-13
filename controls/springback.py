@@ -9,6 +9,7 @@ from array import array
 from pid import PID
 from matplotlib import pyplot as plt
 
+from smoother import Smoother
 
 # torque constant = 15.8 mNm/A
 
@@ -76,8 +77,8 @@ class encodertest:
     def set_speed(self, speed,zero=False):
         # duty from 0.0 ~ 1.0
         try:
-            #if zero:
-            #    speed = 0
+            if zero:
+                speed = 0
             #else:
             #    speed *= 0.6
             #    speed += -0.4 if speed < 0 else 0.4
@@ -117,24 +118,35 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, sigint_handler)
 
     t = encodertest()
-    pid = PID(6.0,0.05,0.0)
+    pid = PID(0.8,0.05,0.00)
+    smoother = Smoother(10) # avg of 100 data
     
-    bias = 296.8
+    bias = -3
 
-    k = -2./180
-    k2 = -0.05
-    ang_thresh = 15
+    k = 2./180
+    k2 = 0.04
+    ang_thresh = 10
 
     Is = []
     then = time.time()
 
-    plt.ion()
-    #graph = plt.plot([],[])[0]
-    #plt.show()
-
     ts = []
     dcs = []
     mcs = []
+    ss = [] # speed
+
+    plt.ion()
+
+    fig, axs = plt.subplots(2,1)
+
+    g1 = axs[0].plot(ts,dcs)[0] # desired current
+    g2 = axs[0].plot(ts,mcs)[0] # measured current plot
+    g3 = axs[1].plot(ts, ss, 'r')[0] # speed
+
+    axs[0].autoscale(enable=True,axis='both',tight=False)
+    axs[0].legend(['desired current','measured current'])
+    axs[1].autoscale(enable=True,axis='both',tight=False)
+    axs[1].legend(['speed'])
 
     while True:
         ang = (parse_angle(t.enc_readAng()) - bias)
@@ -143,38 +155,51 @@ if __name__ == "__main__":
         elif ang < -180:
             ang += 360
 
-        print ang
+        print 'ang', ang
         I = parse_current(t.read_current())
         Is.append(I)
 
-        
         if abs(ang) < ang_thresh:
             desired_current = k2 * ang
         else:
             desired_current = k * ang + ang_thresh*(k-k2)*(1 if ang < 0 else -1)
 
-        measured_current = np.mean(Is[-100:])
+        smoother.put(I)
+        measured_current = smoother.get()
+
+        # compute error
         print 'dc : {0:.2f}; mc : {1:.2f}'.format( desired_current, measured_current)
+        error = (desired_current - measured_current) #need to counteract
 
-        error = desired_current - measured_current
-
+        ## GET DT
         now = time.time()
         dt = now - then
         then = now
 
+        # get speed
+        speed = pid.compute(error,dt)
+        speed = max(min(speed,1),-1)# capping speed
+        ss.append(speed)
+
+
         ts.append(now)
+        dcs.append(desired_current)
         mcs.append(measured_current)
 
-        #graph.set_xdata(ts)
-        #graph.set_ydata(mcs)
-        #plt.draw()
-        #plt.pause(0.010)
+        g1.set_data(ts,dcs)
+        g2.set_data(ts,mcs)
+        g3.set_data(ts,ss)
 
-        speed = pid.compute(error,dt)
-        speed = max(min(speed,1),-1)
-        #print 'speed : {0:.2f}'.format(speed)
+        for ax in axs:
+            ax.relim()
+            ax.autoscale_view(True,True,True)
 
-        t.set_speed(speed, zero=(abs(ang)<2))
+        fig.canvas.draw()
+        plt.pause(0.010)
+
+        print 'speed : {0:.2f}'.format(speed)
+
+        t.set_speed(speed, zero=(abs(ang)<1))
 
 
     t.close()
