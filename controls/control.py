@@ -10,14 +10,19 @@ from matplotlib import pyplot as plt
 from smoother import Smoother
 from controller import DamperController, SpringBackController, TextureController, WallController
 from pic_interface import PICInterface
+from ekf import EKF
 
 # torque constant = 15.8 mNm/A
 
 def parse_angle(angleBytes):
     angle_enc = int(angleBytes[0])+int(angleBytes[1])*256
     #print "Bin: {0:016b} Hex:{1:04x} Dec:{2:0f} Angle:{3:0f}".format(angle_enc, angle_enc, float(angle_enc)/0x3FFF, float(angle_enc)/0x3FFF*360)
-    angle_enc = (float(angle_enc) / 0x3FFF * 360) % 360
-    return angle_enc
+    ang = (float(angle_enc) / 0x3FFF * 360) % 360
+    if ang > 180:
+        ang -= 360
+    elif ang < -180:
+        ang += 360
+    return ang
 
 def parse_current(currentBytes):
     resistance = 75e-3
@@ -47,6 +52,7 @@ if __name__ == "__main__":
 
     t = PICInterface()
     smoother = Smoother(50) # avg of 100 data
+    ekf = EKF()
     
     bias = -3 # rectify 
 
@@ -62,11 +68,33 @@ if __name__ == "__main__":
     last_swapped_behaviors = -10
 
     while True:
-        ## GET DT
+
+        ############# SENSE BEGIN #############
+
+        ## GET DT w.r.t. elapsed time
         now = get_time(start)
         dt = now - then
         then = now
 
+        # Use Kalman Filter to get better angle/velocity estimates:
+        e_ang, e_vel = ekf.predict(ang, dt)[:,0]
+
+        # GET ANGLE Measurements
+        ang = (parse_angle(t.enc_readAng()) - bias)
+        #print 'ang : {0:.2f}'.format(ang)
+
+        ekf.update(np.atleast_2d(np.deg2rad(ang)))# update observations
+
+        # GET (SMOOTHED) CURRENT
+        I = parse_current(t.read_current())
+        smoother.put(I)
+        measured_current = smoother.get()
+        #print 'cur : {0:.2f}'.format(measured_current)
+
+        ############# SENSE END #############
+
+        ############# THINK BEGIN #############
+        # Swapping Controllers
         if now - last_swapped_behaviors > 5:
             last_swapped_behaviors = now
             c_idx += 1
@@ -75,30 +103,19 @@ if __name__ == "__main__":
             print 'Controller : ', controller_names[c_idx]
             print 'time : {0:.2f} sec.'.format(now)
 
-        # GET ANGLE
-        ang = (parse_angle(t.enc_readAng()) - bias)
-        if ang > 180:
-            ang -= 360
-        elif ang < -180:
-            ang += 360
-        #print 'ang : {0:.2f}'.format(ang)
-
-        # GET (SMOOTHED) CURRENT
-        I = parse_current(t.read_current())
-        smoother.put(I)
-        measured_current = smoother.get()
-        #print 'cur : {0:.2f}'.format(measured_current)
-
-
         # get duty 
-        duty = controllers[c_idx].compute(measured_current,ang,dt)
+        duty = controllers[c_idx].compute(measured_current,e_ang,e_vel,dt)
         duty = max(min(duty,0.9),-0.9)# capping duty 
-
         #print 'duty: {0:.2f}'.format(duty)
+        ############# THINK END #############
 
+
+        ############# ACT BEGIN #############
         t.set_duty(duty, zero=(abs(ang)<1))
+        ############# ACT END #############
 
-        # Save Data
+        ############# Save Data #############
+
         ts.append(now)
         angs.append(ang)
         mcs.append(measured_current)

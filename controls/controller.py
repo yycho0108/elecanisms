@@ -6,7 +6,7 @@ class Controller(object):
     def __init__(self):
         pass
     @abstractmethod
-    def compute(self, cur, ang, dt):
+    def compute(self, cur, ang, vel, dt):
         pass
 
 class SpringBackController(Controller):
@@ -16,7 +16,7 @@ class SpringBackController(Controller):
         self.k2 = 0.05 # small-angle scaling factor
         self.ang_thresh = 10
         self.pid = PID(6.0,0.05,0.00)
-    def compute(self, cur, ang, dt):
+    def compute(self, cur, ang, vel, dt):
         k,k2 = self.k, self.k2
         if abs(ang) < self.ang_thresh:
             target_cur = k2 * ang
@@ -32,8 +32,8 @@ class DamperController(Controller):
         super(DamperController,self).__init__()
         self.k = 1./360
         self.ang = 0.
-    def compute(self, cur, ang, dt):
-        vel = (ang - self.ang)/dt
+    def compute(self, cur, ang, vel, dt):
+        #vel = (ang - self.ang)/dt
         duty = self.k * vel
         duty = max(min(duty,0.9),-0.9)
         if abs(ang - self.ang) < .15:
@@ -48,8 +48,8 @@ class TextureController(Controller):
         super(TextureController,self).__init__()
         self.k = 1./360
         self.ang = 0.
-    def compute(self, cur, ang, dt):
-        vel = (ang - self.ang)/dt
+    def compute(self, cur, ang, vel, dt):
+        #vel = (ang - self.ang)/dt
         duty = self.k * vel
         duty = max(min(duty,0.9),-0.9)
         if (round(ang) % 10) > 5:
@@ -66,7 +66,7 @@ class WallController(Controller):
     def __init__(self):
         super(WallController,self).__init__()
         self.k = 20./180
-    def compute(self,cur,ang,dt):
+    def compute(self,cur,ang,vel,dt):
         duty = self.k * ang
         duty = max(min(duty,0.9),-0.9)
         if ang > 0:
