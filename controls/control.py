@@ -48,27 +48,29 @@ def get_time(start):
 
 if __name__ == "__main__":
 
+    ## SIGNAL HANDLING ##
     signal.signal(signal.SIGINT, sigint_handler)
 
+    ## INITIALIZE PROCESSING UNITS ##
     t = PICInterface()
     smoother = Smoother(50) # avg of 100 data
     ekf = EKF()
-    
-    bias = -3 # rectify 
-
-    start = time.time()
-    then = get_time(start)
 
     controllers = [TextureController(), SpringBackController(), WallController(), DamperController()]
     controller_names = ['Texture','SpringBack','Wall','Damper']
-
     TEXTURE,SPRINGBACK,WALL,DAMPER = range(4)
     c_idx = TEXTURE
 
+    ## PARAMETERS ##
+    bias = -3 # rectify angle offset from "0"
+
+    ## STATE VARIABLES ##
+    start = time.time()
+    then = get_time(start)
     last_swapped_behaviors = -10
+    ang = (parse_angle(t.enc_readAng()) - bias)
 
     while True:
-
         ############# SENSE BEGIN #############
 
         ## GET DT w.r.t. elapsed time
@@ -77,7 +79,7 @@ if __name__ == "__main__":
         then = now
 
         # Use Kalman Filter to get better angle/velocity estimates:
-        e_ang, e_vel = ekf.predict(ang, dt)[:,0]
+        e_ang, e_vel = ekf.predict(dt)[:,0]
 
         # GET ANGLE Measurements
         ang = (parse_angle(t.enc_readAng()) - bias)
@@ -109,13 +111,11 @@ if __name__ == "__main__":
         #print 'duty: {0:.2f}'.format(duty)
         ############# THINK END #############
 
-
         ############# ACT BEGIN #############
         t.set_duty(duty, zero=(abs(ang)<1))
         ############# ACT END #############
 
         ############# Save Data #############
-
         ts.append(now)
         angs.append(ang)
         mcs.append(measured_current)
