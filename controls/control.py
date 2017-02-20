@@ -35,11 +35,13 @@ def parse_current(currentBytes):
 
 ts = []
 angs = []
+vels = []
 mcs = []
 ds = [] # speed
 
 def sigint_handler(signal, frame):
-    data = np.c_[ts, angs, mcs, ds]
+    data = np.c_[ts, angs, vels, mcs, ds]
+    #print 'var', np.var(angs)
     np.savetxt('data.csv', data, delimiter=',')
     sys.exit(0)
 
@@ -80,6 +82,8 @@ if __name__ == "__main__":
 
         # Use Kalman Filter to get better angle/velocity estimates:
         e_ang, e_vel = ekf.predict(dt)[:,0]
+        print e_vel
+        e_ang = np.rad2deg(e_ang)
 
         # GET ANGLE Measurements
         ang = (parse_angle(t.enc_readAng()) - bias)
@@ -117,7 +121,8 @@ if __name__ == "__main__":
 
         ############# Save Data #############
         ts.append(now)
-        angs.append(ang)
+        angs.append(e_ang) # estimated angle, not real angle
+        vels.append(e_vel)
         mcs.append(measured_current)
         ds.append(duty)
 

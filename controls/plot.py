@@ -12,22 +12,15 @@ def mean_angle(deg):
 sectorSize = 100
 
 def plotcsv(name):
-    data = np.loadtxt(name)
-    data[:,2] = np.unwrap(data[:,2])
-    plt.plot(data[:,2])
+    data = np.loadtxt(name,delimiter=',')
+    df = pd.DataFrame(data, columns=['Time', 'Angle', 'Velocity', 'Measured Current', 'Desired Current'])
+    ax = plt.gca()
 
-    sector = len(data)/sectorSize
-    df = pd.DataFrame(data, columns=['Encoder', 'Camera', 'Bias'])
-    #df.Encoder, df.Camera, df.Bias = [np.unwrap(np.deg2rad(x)) for x in (df.Encoder,df.Camera,df.Bias)]
-    df = df[df.Camera != -1]
-
-    df['Bias'] = np.rad2deg(np.unwrap(np.deg2rad(df['Bias'])))
-
-    df.plot()
+    ax.plot(df.Time, df.Angle)
+    ax.twinx().plot(df.Time, df.Velocity, color='g')
+    plt.axhline(0,color='black')
     plt.title('Vision-Based Encoder Calibration')
-
-    print 'median offset', np.rad2deg(np.median(df.Bias))
-
+    plt.legend(['Angle','Velocity'])
     plt.show()
 
-plotcsv('calib.csv')
+plotcsv('data.csv')

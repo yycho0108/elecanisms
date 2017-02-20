@@ -31,7 +31,8 @@ class EKF(object):
         self.Q = np.eye(n) * q
 
         # R = Measurement Noise - guess 1e-2^2 = 1e-4 (TODO : ascertain)
-        self.R = np.diag([1e-4])
+        var = (np.pi/180.)**2 * (.0018)
+        self.R = np.diag([var]) # based on static angular variance
 
     def predict(self,dt):
         """
@@ -55,8 +56,10 @@ class EKF(object):
         H = self.H(x)
 
         y = z - self.h(x) # Y = Measurement "Error" or Innovation
+        y = (y + np.pi) % (2*np.pi) - np.pi # remove 0-360 problem
+
         S = dot(H,P,H.T) + R # S = Innovation Covariance
-        K = dot(P,H.T,np.linalg.inv(S)) # K = "Optimal" Kalman Gain; pinv for numerical stability
+        K = dot(P,H.T,np.linalg.inv(S)) # K = "Optimal" Kalman Gain
         dx = dot(K,y)
         self.x += dx # Now update x
         self.P -= dot(K,H,P) # Now update P
@@ -64,7 +67,7 @@ class EKF(object):
 
     def f(self, x, dt):
         #next-state transition
-        t,w = x[:,0]
+        t,w = x[:,0] #theta, angular velocity
         return colvec(t+w*dt,w)
     
     def F(self,x, dt):
@@ -74,6 +77,7 @@ class EKF(object):
         return F
 
     def h(self,x):
+        # measurement mapping : only measures angular position
         return colvec(x[0])
 
     def H(self,x):
@@ -85,28 +89,28 @@ if __name__ == "__main__":
     ekf = EKF()
 
     # time
-    ts = np.linspace(0,13,100)
+    ts = np.linspace(0,26,1000)
 
     # estimated state
     e_x = np.random.normal(size=(2,1), scale=1e+1)
-    print e_x
 
     # previous time
     t_p = ts[0]
 
-    xs = []
+    xs = np.sin(ts * 0.5)
+    ws = 0.5 * np.cos(ts*0.5)
     e_xs = []
     e_ws = []
 
-    for t in ts:
+    var = (np.pi/180.)**2 * (.0018)
+    std = np.sqrt(var)
+
+    for x, t in zip(xs,ts):
         # time difference
         dt = (t - t_p)
 
-        # real state (i.e. real position)
-        x = np.sin(t)
-
         # noisy observation
-        z = x + np.random.normal(scale=1e-2)
+        z = x + np.random.normal(scale=std)
         
         # prediction
         e_x = ekf.predict(dt)
@@ -115,12 +119,15 @@ if __name__ == "__main__":
         ekf.update(z)
 
         t_p = t
-        xs.append(x)
         e_xs.append(e_x[0])
         e_ws.append(e_x[1])
 
     ax = plt.gca()
-    ax.plot(ts,xs)
-    ax.plot(ts,e_xs)
-    ax.twinx().plot(ts,e_ws)
+    #ax.plot(xs,e_xs)
+    #ax.plot(ts,xs)
+    #ax.plot(ts,e_xs)
+    #ax2 = ax.twinx()
+    ax.plot(ts,ws)
+    ax.plot(ts,e_ws)
+    plt.axhline(0,color='black')
     plt.show()
