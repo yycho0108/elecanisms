@@ -4,7 +4,7 @@ from scipy.linalg import cholesky, sqrtm
 from matplotlib import pyplot as plt
 
 from filterpy.kalman import UnscentedKalmanFilter as UKF2
-from filterpy.kalman import MerweScaledSigmaPoints
+from filterpy.kalman import MerweScaledSigmaPoints, SimplexSigmaPoints, JulierSigmaPoints
 
 def sub_ang(a,b, rad=False):
     x = a-b
@@ -140,16 +140,23 @@ def fx(x,dt):
 def hx(x):
     return np.array(x[0])
 
+def f(t):
+    return np.cos(3*t)
+def f_p(t):
+    return -3*np.sin(3*t)
+
 if __name__ == "__main__":
     ukf = UKF(2)
 
     # test
-    # s = MerweScaledSigmaPoints(2,alpha=.1,beta=2.,kappa=1.)
-    # ukf_2 = UKF2(dim_x=2,dim_z=1,fx=fx,hx=hx,
-    #         dt=26/1000., points=s)
-    # ukf_2.x = ukf.x[:,0]
-    # ukf_2.R = ukf.R.copy()
-    # ukf_2.Q = ukf.Q.copy()
+    #s = MerweScaledSigmaPoints(2,alpha=.1,beta=2.,kappa=1.)
+    #s = JulierSigmaPoints(2,0)
+    #s = SimplexSigmaPoints(2)
+    ukf_2 = UKF2(dim_x=2,dim_z=1,fx=fx,hx=hx,
+            dt=26/1000., points=s)
+    ukf_2.x = ukf.x[:,0]
+    ukf_2.R = ukf.R.copy()
+    ukf_2.Q = ukf.Q.copy()
 
     # time
     ts = np.linspace(0,26,1000)
@@ -160,8 +167,9 @@ if __name__ == "__main__":
     # previous time
     t_p = ts[0]
 
-    xs = np.sin(0.5*ts)
-    ws = 0.5*np.cos(0.5*ts) # real
+    xs = f(ts)# np.sin(0.5*ts)
+    ws = f_p(ts)#0.5*np.cos(0.5*ts) # real
+
     e_xs = []
     e_ws = []
 
@@ -177,17 +185,19 @@ if __name__ == "__main__":
 
         # prediction
         e_x = ukf.predict(dt)
-        #ukf_2.predict(dt)
-        #e_x_2 = ukf_2.x
+
+        ukf_2.predict(dt)
+        e_x_2 = ukf_2.x
 
         # update
         ukf.update(z)
-        #ukf_2.update(z)
+        ukf_2.update(z)
 
         t_p = t
         e_xs.append(e_x[0])
-        e_ws.append(e_x[1])
-        #e_ws.append(e_x_2[1])
+        #e_ws.append(e_x[1])
+        e_ws.append(e_x_2[1])
+        print e_x[1] - e_x_2[1]
 
     ax = plt.gca()
     #ax.plot(xs,e_xs)

@@ -85,6 +85,13 @@ class EKF(object):
         res[0,0] = 1
         return res
 
+def f(t):
+    return 0.5 * t - t**2 + np.sin(3*t) + np.sin(t)*np.cos(t)
+def f_p(t):
+    return 0.5 - 2*t + 3*np.cos(3*t) + (np.cos(t)**2 - np.sin(t)**2)
+
+
+
 if __name__ == "__main__":
     ekf = EKF()
 
@@ -97,8 +104,8 @@ if __name__ == "__main__":
     # previous time
     t_p = ts[0]
 
-    xs = np.sin(ts * 0.5)
-    ws = 0.5 * np.cos(ts*0.5)
+    xs = f(ts)
+    ws = f_p(ts)
     e_xs = []
     e_ws = []
 
