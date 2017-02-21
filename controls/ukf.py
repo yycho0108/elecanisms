@@ -17,6 +17,9 @@ def colvec(*args):
 def dot(*args):
     return reduce(np.dot, args)
 
+var = (np.pi/180.)**2 * (.18)
+std = np.sqrt(var)
+
 
 class SigmaPoint(object):
     def __init__(self, n, a=1e-3,b=2,c=0):
@@ -66,9 +69,8 @@ class UKF(object):
         self.S = [] # sigma points
         self.w_m = []
         self.w_c = []
-        self.P = np.eye(n) * 1e+1 # covariance
-        self.Q = np.eye(n) * 1e-3
-        var = (np.pi/180.)**2 * (.0018)
+        self.P = np.eye(n) * 1e+3 # covariance
+        self.Q = np.diag([1e-3,1e-1])
         self.R = np.diag([var]) # based on static angular variance
 
         self.n = n
@@ -103,8 +105,6 @@ class UKF(object):
     def predict(self, dt):
         x, (self.w_m, self.w_c) = self.sig.get(self.x,self.P)
         self.S = [self.f(x_i, dt) for x_i in x] # sigma points
-        #print 'x', x[0]
-        #print 'S', self.S[0]
         self.x, self.P = self.UT(self.S,self.w_m,self.w_c,self.Q)
         return self.x
 
@@ -141,15 +141,15 @@ def hx(x):
     return np.array(x[0])
 
 def f(t):
-    return np.cos(3*t)
+    return np.cos(0.3+2*t)
 def f_p(t):
-    return -3*np.sin(3*t)
+    return -2*np.sin(0.3+2*t)
 
 if __name__ == "__main__":
     ukf = UKF(2)
 
     # test
-    #s = MerweScaledSigmaPoints(2,alpha=.1,beta=2.,kappa=1.)
+    s = MerweScaledSigmaPoints(2,alpha=.1,beta=2.,kappa=1.)
     #s = JulierSigmaPoints(2,0)
     #s = SimplexSigmaPoints(2)
     ukf_2 = UKF2(dim_x=2,dim_z=1,fx=fx,hx=hx,
@@ -167,14 +167,12 @@ if __name__ == "__main__":
     # previous time
     t_p = ts[0]
 
-    xs = f(ts)# np.sin(0.5*ts)
-    ws = f_p(ts)#0.5*np.cos(0.5*ts) # real
+    xs = f(ts)
+    ws = f_p(ts)
 
+    zs = []
     e_xs = []
     e_ws = []
-
-    var = (np.pi/180.)**2 * (.0018)
-    std = np.sqrt(var)
 
     for x, t in zip(xs,ts):
         # time difference
@@ -194,17 +192,21 @@ if __name__ == "__main__":
         ukf_2.update(z)
 
         t_p = t
+        zs.append(z)
         e_xs.append(e_x[0])
         #e_ws.append(e_x[1])
-        e_ws.append(e_x_2[1])
-        print e_x[1] - e_x_2[1]
+        e_ws.append(e_x[1])
+        #print e_x[1] - e_x_2[1]
 
     ax = plt.gca()
-    #ax.plot(xs,e_xs)
-    #ax.plot(ts,xs)
-    #ax.plot(ts,e_xs)
+    #ax.plot(ts,zs,color='green')
+    #ax.plot(ts,e_xs,color='red')
+    #ax.plot(ts,xs,color='blue')
     #ax2 = ax.twinx()
+    ax.plot(ts,xs)
     ax.plot(ts,ws)
+    ax.plot(ts,e_xs)
     ax.plot(ts,e_ws)
+    plt.legend(['x','w','e_x','e_w'])
     plt.axhline(0,color='black')
     plt.show()

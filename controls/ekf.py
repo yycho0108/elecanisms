@@ -19,7 +19,7 @@ class EKF(object):
         m = 1
 
         p = 1e+1 # start out with large-ish uncertainty
-        q = 1e-3 # assume small process noise
+        q = 1e+3 # assume small process noise
 
         # Initialization values
         self.x = np.zeros((n,1))
@@ -28,7 +28,8 @@ class EKF(object):
         self.P = np.eye(n) * p
 
         # Q = Process Noise
-        self.Q = np.eye(n) * q
+        #self.Q = np.eye(n) * q
+        self.Q = np.diag([1e-3,1e+0])
 
         # R = Measurement Noise - guess 1e-2^2 = 1e-4 (TODO : ascertain)
         var = (np.pi/180.)**2 * (.0018)
@@ -56,7 +57,7 @@ class EKF(object):
         H = self.H(x)
 
         y = z - self.h(x) # Y = Measurement "Error" or Innovation
-        y = (y + np.pi) % (2*np.pi) - np.pi # remove 0-360 problem
+        #y = (y + np.pi) % (2*np.pi) - np.pi # remove 0-360 problem
 
         S = dot(H,P,H.T) + R # S = Innovation Covariance
         K = dot(P,H.T,np.linalg.inv(S)) # K = "Optimal" Kalman Gain
@@ -86,9 +87,9 @@ class EKF(object):
         return res
 
 def f(t):
-    return 0.5 * t - t**2 + np.sin(3*t) + np.sin(t)*np.cos(t)
+    return np.cos(0.3+2*t)
 def f_p(t):
-    return 0.5 - 2*t + 3*np.cos(3*t) + (np.cos(t)**2 - np.sin(t)**2)
+    return -2*np.sin(0.3+2*t)
 
 
 
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     ts = np.linspace(0,26,1000)
 
     # estimated state
-    e_x = np.random.normal(size=(2,1), scale=1e+1)
+    e_x = np.random.normal(size=(2,1), scale=1e+9)
 
     # previous time
     t_p = ts[0]
@@ -131,8 +132,8 @@ if __name__ == "__main__":
 
     ax = plt.gca()
     #ax.plot(xs,e_xs)
-    #ax.plot(ts,xs)
-    #ax.plot(ts,e_xs)
+    ax.plot(ts,xs)
+    ax.plot(ts,e_xs)
     #ax2 = ax.twinx()
     ax.plot(ts,ws)
     ax.plot(ts,e_ws)
