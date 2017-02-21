@@ -11,6 +11,9 @@ def colvec(*args):
 def dot(*args):
     return reduce(np.dot, args)
 
+var = (np.pi/180.)**2 * (.0018)
+std = np.sqrt(var)
+
 class EKF(object):
     def __init__(self):
         # n = size of state vector (= 2)
@@ -32,7 +35,6 @@ class EKF(object):
         self.Q = np.diag([1e-3,1e+0])
 
         # R = Measurement Noise - guess 1e-2^2 = 1e-4 (TODO : ascertain)
-        var = (np.pi/180.)**2 * (.0018)
         self.R = np.diag([var]) # based on static angular variance
 
     def predict(self,dt):
@@ -57,7 +59,7 @@ class EKF(object):
         H = self.H(x)
 
         y = z - self.h(x) # Y = Measurement "Error" or Innovation
-        #y = (y + np.pi) % (2*np.pi) - np.pi # remove 0-360 problem
+        y = (y + np.pi) % (2*np.pi) - np.pi # remove 0-360 problem
 
         S = dot(H,P,H.T) + R # S = Innovation Covariance
         K = dot(P,H.T,np.linalg.inv(S)) # K = "Optimal" Kalman Gain
@@ -87,9 +89,9 @@ class EKF(object):
         return res
 
 def f(t):
-    return np.cos(0.3+2*t)
+    return np.cos(0.3+2*t) + np.sin(0.4 + 5*t)
 def f_p(t):
-    return -2*np.sin(0.3+2*t)
+    return -2*np.sin(0.3+2*t) + 5*np.cos(0.4+5*t) 
 
 
 
@@ -110,8 +112,6 @@ if __name__ == "__main__":
     e_xs = []
     e_ws = []
 
-    var = (np.pi/180.)**2 * (.0018)
-    std = np.sqrt(var)
 
     for x, t in zip(xs,ts):
         # time difference

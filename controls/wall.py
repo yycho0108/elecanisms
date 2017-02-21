@@ -138,8 +138,6 @@ if __name__ == "__main__":
         dt = now - then
         then = now
 
-
-
         duty = k * ang
         duty = max(min(duty,0.9),-0.9)
         if ang > 0:

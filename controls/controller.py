@@ -30,7 +30,7 @@ class SpringBackController(Controller):
 class DamperController(Controller):
     def __init__(self):
         super(DamperController,self).__init__()
-        self.k = 1./360
+        self.k = 20./100
         self.ang = 0.
     def compute(self, cur, ang, vel, dt):
         #vel = (ang - self.ang)/dt
@@ -46,13 +46,14 @@ class DamperController(Controller):
 class TextureController(Controller):
     def __init__(self):
         super(TextureController,self).__init__()
-        self.k = 1./360
+        self.k = 20./100
         self.ang = 0.
     def compute(self, cur, ang, vel, dt):
         #vel = (ang - self.ang)/dt
-        duty = self.k * vel
+        duty = self.k * vel # proportional to velocity :)
         duty = max(min(duty,0.9),-0.9)
-        if (round(ang) % 10) > 5:
+        print ang
+        if (round(ang) % 20) > 10:
             # Texture : change behavior every 5 degrees
             duty = 0
         elif abs(ang - self.ang) < .15:
@@ -69,8 +70,9 @@ class WallController(Controller):
     def compute(self,cur,ang,vel,dt):
         duty = self.k * ang
         duty = max(min(duty,0.9),-0.9)
-        if ang > 0:
+        ang = ang + 90
+        ang = (ang + 180) % (360) - 180 # make sure angle is normalized
+        print ang
+        if ang > 90 or ang < -90:
             duty = 0
-        elif ang < -90:
-            duty = -duty
         return duty

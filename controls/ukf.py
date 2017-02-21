@@ -70,7 +70,7 @@ class UKF(object):
         self.w_m = []
         self.w_c = []
         self.P = np.eye(n) * 1e+3 # covariance
-        self.Q = np.diag([1e-3,1e-1])
+        self.Q = np.diag([1e-3,1e+0])
         self.R = np.diag([var]) # based on static angular variance
 
         self.n = n
@@ -141,9 +141,9 @@ def hx(x):
     return np.array(x[0])
 
 def f(t):
-    return np.cos(0.3+2*t)
+    return np.cos(0.3+2*t) + np.sin(0.4 + 5*t)
 def f_p(t):
-    return -2*np.sin(0.3+2*t)
+    return -2*np.sin(0.3+2*t) + 5*np.cos(0.4+5*t) 
 
 if __name__ == "__main__":
     ukf = UKF(2)

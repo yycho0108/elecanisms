@@ -11,6 +11,7 @@ from smoother import Smoother
 from controller import DamperController, SpringBackController, TextureController, WallController
 from pic_interface import PICInterface
 from ekf import EKF
+from ukf import UKF
 
 # torque constant = 15.8 mNm/A
 
@@ -57,11 +58,12 @@ if __name__ == "__main__":
     t = PICInterface()
     smoother = Smoother(50) # avg of 100 data
     ekf = EKF()
+    ukf = UKF(2)
 
     controllers = [TextureController(), SpringBackController(), WallController(), DamperController()]
     controller_names = ['Texture','SpringBack','Wall','Damper']
     TEXTURE,SPRINGBACK,WALL,DAMPER = range(4)
-    c_idx = TEXTURE
+    c_idx = TEXTURE 
 
     ## PARAMETERS ##
     bias = -3 # rectify angle offset from "0"
@@ -69,7 +71,7 @@ if __name__ == "__main__":
     ## STATE VARIABLES ##
     start = time.time()
     then = get_time(start)
-    last_swapped_behaviors = -10
+    last_swapped_behaviors = 0
     ang = (parse_angle(t.enc_readAng()) - bias)
 
     while True:
@@ -82,7 +84,6 @@ if __name__ == "__main__":
 
         # Use Kalman Filter to get better angle/velocity estimates:
         e_ang, e_vel = ekf.predict(dt)[:,0]
-        print e_vel
         e_ang = np.rad2deg(e_ang)
 
         # GET ANGLE Measurements
